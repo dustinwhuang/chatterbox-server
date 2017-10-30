@@ -11,6 +11,8 @@ this file and include it in basic-server.js so that it actually works.
 *Hint* Check out the node module documentation at http://nodejs.org/api/modules.html.
 
 **************************************************************/
+var url = require('url');
+var body = [];
 
 var requestHandler = function(request, response) {
   // Request and Response come from node's http module.
@@ -31,9 +33,14 @@ var requestHandler = function(request, response) {
 
   // The outgoing status.
   var statusCode = 200;
+  var createdCode = 201;
+  var notFoundCode = 404;
 
   // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
+
+
+
 
   // Tell the client we are sending them plain text.
   //
@@ -45,6 +52,21 @@ var requestHandler = function(request, response) {
   // which includes the status and all headers.
   response.writeHead(statusCode, headers);
 
+  if (request.url === '/classes/messages' && request.method === 'GET') {
+    response.end(JSON.stringify({results: body}));
+  } else if (request.method === 'POST') {
+    headers['Content-Type'] = 'application/JSON';
+    request.on('data', chunk => body.push(JSON.parse(chunk)));
+    request.on('end', () => {
+      response.writeHead(201, headers);
+      response.end();
+    });
+  } else {
+    response.writeHead(notFoundCode, headers); 
+    response.end();
+  }
+
+
   // Make sure to always call response.end() - Node may not send
   // anything back to the client until you do. The string you pass to
   // response.end() will be the body of the response - i.e. what shows
@@ -52,7 +74,8 @@ var requestHandler = function(request, response) {
   //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
-  response.end('Hello, World!');
+  
+  
 };
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
@@ -69,5 +92,9 @@ var defaultCorsHeaders = {
   'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'access-control-allow-headers': 'content-type, accept',
   'access-control-max-age': 10 // Seconds.
+};
+
+module.exports = {
+  requestHandler
 };
 
