@@ -14,7 +14,9 @@ this file and include it in basic-server.js so that it actually works.
 var url = require('url');
 var fs = require('fs');
 var path = require('path');
-var body = [];
+var messages = fs.createWriteStream('messages.txt', {flags: 'a'});
+var arr = (fs.readFileSync('messages.txt') + '').split('\n');
+var body = arr.slice(0, arr.length - 1).map(val => JSON.parse(val)).reverse() || [];
 
 var requestHandler = function(request, response) {
   var purl = url.parse(request.url);
@@ -61,6 +63,7 @@ var requestHandler = function(request, response) {
       message.objectId = body.length + 1;
       message.createdAt = new Date();
       body.unshift(message);
+      messages.write(JSON.stringify(message) + '\n');
     });
     request.on('end', () => {
       response.writeHead(201, headers);
