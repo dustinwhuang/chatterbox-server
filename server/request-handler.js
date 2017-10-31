@@ -11,156 +11,59 @@ this file and include it in basic-server.js so that it actually works.
 *Hint* Check out the node module documentation at http://nodejs.org/api/modules.html.
 
 **************************************************************/
-var url = require('url');
 var fs = require('fs');
-var path = require('path');
+var express = require('express');
+
 var messages = fs.createWriteStream('messages.txt', {flags: 'a'});
 var arr = (fs.readFileSync('messages.txt') + '').split('\n');
 var body = arr.slice(0, arr.length - 1).map(val => JSON.parse(val)).reverse() || [];
 
-var requestHandler = function(request, response) {
-  var purl = url.parse(request.url);
-  // Request and Response come from node's http module.
-  //
-  // They include information about both the incoming request, such as
-  // headers and URL, and about the outgoing response, such as its status
-  // and content.
-  //
-  // Documentation for both request and response can be found in the HTTP section at
-  // http://nodejs.org/documentation/api/
 
-  // Do some basic logging.
-  //
-  // Adding more logging to your server can be an easy way to get passive
-  // debugging help, but you should always be careful about leaving stray
-  // console.logs in your code.
-  console.log('Serving request type ' + request.method + ' for url ' + request.url);
-
-  // The outgoing status.
-  var statusCode = 200;
-  var createdCode = 201;
-  var notFoundCode = 404;
-
-  // See the note below about CORS headers.
-  var headers = defaultCorsHeaders;
-
-
-  // Tell the client we are sending them plain text.
-  //
-  // You will need to change this if you are sending something
-  // other than plain text, like JSON or HTML.
-  headers['Content-Type'] = 'text/plain';
-
-  // .writeHead() writes to the request line and headers of the response,
-  // which includes the status and all headers.
-  response.writeHead(statusCode, headers);
-  if (purl.pathname === '/classes/messages' && (request.method === 'GET' || request.method === 'OPTIONS')) {
-    response.end(JSON.stringify({results: body}));
-  } else if (request.method === 'POST') {
-    headers['Content-Type'] = 'application/JSON';
-    request.on('data', chunk => {
-      let message = JSON.parse(chunk);
-      message.objectId = body.length + 1;
-      message.createdAt = new Date();
-      body.unshift(message);
-      messages.write(JSON.stringify(message) + '\n');
-    });
-    request.on('end', () => {
-      response.writeHead(201, headers);
-      response.end();
-    });
-  } else if (request.method === 'PUT') {
-    headers['Content-Type'] = 'application/JSON';
-    request.on('data', chunk => {
-      let message = JSON.parse(chunk);
-      for (let i = 0; i < body.length; i++) {
-        if (body[i].objectId === message.objectId) {
-          body[i] = message;
-          break;
-        }
-      }
-    });
-    request.on('end', () => {
-      response.writeHead(200, headers);
-      response.end();
-    });
-  } else if (request.method === 'DELETE') {
-    headers['Content-Type'] = 'application/JSON';
-    request.on('data', chunk => {
-      let message = JSON.parse(chunk);
-      for (let i = 0; i < body.length; i++) {
-        if (body[i].objectId === message.objectId) {
-          body.splice(i, 1);
-          break;
-        }
-      }
-    });
-    request.on('end', () => {
-      response.writeHead(200, headers);
-      response.end();
-    });
-  } else {
-    let filePath = `${purl.pathname}`;
-
-    if (filePath === '/') {
-      filePath = '/index.html';
-    }
-
-    fs.exists(`./client${filePath}`, function(exists) {
-      if (exists) {
-        fs.readFile(`./client${filePath}`, function(error, content) {
-          if (error) {
-            response.writeHead(500);
-            response.end();
-          } else {
-            var extname = path.extname(filePath);
-            if (extname === '.js') {
-              headers['Content-Type'] = 'text/javascript';
-            } else if (extname === '.css') {
-              headers['Content-Type'] = 'text/css';
-            } else {
-              headers['Content-Type'] = 'text/html';
-            }
-            response.writeHead(200, headers);
-            response.end(content, 'utf-8');
-          }
-        });
-      } else {
-        response.writeHead(notFoundCode, headers); 
-        response.end();
-      }
-    });
-  }
-
-
-  // Make sure to always call response.end() - Node may not send
-  // anything back to the client until you do. The string you pass to
-  // response.end() will be the body of the response - i.e. what shows
-  // up in the browser.
-  //
-  // Calling .end "flushes" the response's internal buffer, forcing
-  // node to actually send all the data over to the client.
+var handleGet = (req, res) => {
+  res.end(JSON.stringify({results: body}));
+};
   
-  
+var handlePost = (req, res) => {
+  let message = req.body;
+  message.objectId = body.length + 1;
+  message.createdAt = new Date();
+  body.unshift(message);
+  messages.write(JSON.stringify(message) + '\n');
+
+  res.sendStatus(201);
+  res.send();
 };
 
-// These headers will allow Cross-Origin Resource Sharing (CORS).
-// This code allows this server to talk to websites that
-// are on different domains, for instance, your chat client.
-//
-// Your chat client is running from a url like file://your/chat/client/index.html,
-// which is considered a different domain.
-//
-// Another way to get around this restriction is to serve you chat
-// client from this domain by setting up static file serving.
-var defaultCorsHeaders = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'access-control-allow-headers': 'content-type, accept',
-  'access-control-max-age': 10 // Seconds.
+var handlePut = (req, res) => {
+  let message = req.body;
+  for (let i = 0; i < body.length; i++) {
+    if (body[i].objectId === message.objectId) {
+      body[i] = message;
+      // TODO: change in file also
+      break;
+    }
+  }
+
+  res.end();
+};
+
+var handleDelete = (req, res) => {
+  let message = req.body;
+  for (let i = 0; i < body.length; i++) {
+    if (body[i].objectId === message.objectId) {
+      body.splice(i, 1);
+      // TODO: delete in file also
+      break;
+    }
+  }
+
+  res.end();
 };
 
 module.exports = {
-  requestHandler
+  handleGet,
+  handlePost,
+  handlePut,
+  handleDelete
 };
 

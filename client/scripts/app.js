@@ -42,7 +42,7 @@ var app = {
     $.ajax({
       url: app.server,
       type: 'POST',
-      data: JSON.stringify(message),
+      data: message,
       success: function (data) {
         // Clear messages input
         app.$message.val('');
