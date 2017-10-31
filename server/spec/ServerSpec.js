@@ -116,4 +116,84 @@ describe('Node Server Request Listener Function', function() {
       });
   });
 
+  it('[ADDED]: should respond with messages in correct order', function() {
+    var stubMsg = {
+      username: 'Jim',
+      message: 'test message 1'
+    };
+    var req = new stubs.request('/classes/messages', 'POST', stubMsg);
+    var res = new stubs.response();
+
+    handler.requestHandler(req, res);
+
+    expect(res._responseCode).to.equal(201);
+
+      // Now if we request the log for that room the message we posted should be there:
+    req = new stubs.request('/classes/messages', 'GET');
+    res = new stubs.response();
+
+    handler.requestHandler(req, res);
+
+    expect(res._responseCode).to.equal(200);
+    var messages = JSON.parse(res._data).results;
+    expect(messages.length).to.be.above(0);
+    expect(messages[0].username).to.equal('Jim');
+    expect(messages[0].message).to.equal('test message 1');
+    expect(messages[1].username).to.equal('Jono');
+    expect(messages[1].message).to.equal('Do my bidding!');
+    expect(res._ended).to.equal(true);
+  });
+
+  it('[ADDED]: Should modify a message based on id', function() {
+    var stubMsg = {
+      username: 'Jim',
+      message: 'test message changed',
+      objectId: 3
+    };
+    var req = new stubs.request('/classes/messages', 'PUT', stubMsg);
+    var res = new stubs.response();
+
+    handler.requestHandler(req, res);
+
+    expect(res._responseCode).to.equal(200);
+
+      // Now if we request the log for that room the message we posted should be there:
+    req = new stubs.request('/classes/messages', 'GET');
+    res = new stubs.response();
+
+    handler.requestHandler(req, res);
+
+    expect(res._responseCode).to.equal(200);
+    var messages = JSON.parse(res._data).results;
+    expect(messages.length).to.be.above(0);
+    expect(messages[0].username).to.equal('Jim');
+    expect(messages[0].message).to.equal('test message changed');
+    expect(res._ended).to.equal(true);
+  });
+
+  it('[ADDED]: Should delete a message based on id', function() {
+    var stubMsg = {
+      objectId: 3
+    };
+    var req = new stubs.request('/classes/messages', 'DELETE', stubMsg);
+    var res = new stubs.response();
+
+    handler.requestHandler(req, res);
+
+    expect(res._responseCode).to.equal(200);
+
+      // Now if we request the log for that room the message we posted should be there:
+    req = new stubs.request('/classes/messages', 'GET');
+    res = new stubs.response();
+
+    handler.requestHandler(req, res);
+
+    expect(res._responseCode).to.equal(200);
+    var messages = JSON.parse(res._data).results;
+    expect(messages.length).to.be.above(0);
+    expect(messages[0].username).to.equal('Jono');
+    expect(messages[0].message).to.equal('Do my bidding!');
+    expect(res._ended).to.equal(true);
+  });
+
 });

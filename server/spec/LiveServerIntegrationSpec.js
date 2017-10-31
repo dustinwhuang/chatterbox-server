@@ -66,12 +66,74 @@ describe('server', function() {
     });
   });
 
+
+
   it('Should 404 when asked for a nonexistent endpoint', function(done) {
     request('http://127.0.0.1:3000/arglebargle', function(error, response, body) {
       expect(response.statusCode).to.equal(404);
       done();
     });
   });
+
+  it('[ADDED]: should respond with messages in correct order', function(done) {
+    var requestParams = {method: 'POST',
+      uri: 'http://127.0.0.1:3000/classes/messages',
+      json: {
+        username: 'Jim',
+        message: 'test message 1'
+      }
+    };
+
+    request(requestParams, function(error, response, body) {
+      // Now if we request the log, that message we posted should be there:
+      request('http://127.0.0.1:3000/classes/messages', function(error, response, body) {
+        var messages = JSON.parse(body).results;
+        expect(messages[0].message).to.equal('test message 1');
+        expect(messages[1].message).to.equal('Do my bidding!');
+        done();
+      });
+    });
+  });
+
+  it('[ADDED]: Should modify a message based on id', function(done) {
+    var requestParams = {method: 'PUT',
+      uri: 'http://127.0.0.1:3000/classes/messages',
+      json: {
+        username: 'Jim',
+        message: 'test message changed',
+        objectId: 3
+      }
+    };
+
+    request(requestParams, function(error, response, body) {
+      // Now if we request the log, that message we posted should be there:
+      request('http://127.0.0.1:3000/classes/messages', function(error, response, body) {
+        var messages = JSON.parse(body).results;
+        expect(messages[0].message).to.equal('test message changed');
+        done();
+      });
+    });
+  });
+
+  it('[ADDED]: Should delete a message based on id', function(done) {
+    var requestParams = {method: 'DELETE',
+      uri: 'http://127.0.0.1:3000/classes/messages',
+      json: {
+        objectId: 3
+      }
+    };
+
+    request(requestParams, function(error, response, body) {
+      // Now if we request the log, that message we posted should be there:
+      request('http://127.0.0.1:3000/classes/messages', function(error, response, body) {
+        var messages = JSON.parse(body).results;
+        expect(messages[0].message).to.equal('Do my bidding!');
+        done();
+      });
+    });
+  });
+
+
 
 
 });

@@ -12,9 +12,11 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 var url = require('url');
+var qs = require('querystring')
 var body = [];
 
 var requestHandler = function(request, response) {
+  var purl = url.parse(request.url);
   // Request and Response come from node's http module.
   //
   // They include information about both the incoming request, such as
@@ -51,14 +53,48 @@ var requestHandler = function(request, response) {
   // .writeHead() writes to the request line and headers of the response,
   // which includes the status and all headers.
   response.writeHead(statusCode, headers);
-
-  if (request.url === '/classes/messages' && request.method === 'GET') {
+  if (purl.pathname === '/classes/messages' && (request.method === 'GET' || request.method === 'OPTIONS')) {
     response.end(JSON.stringify({results: body}));
   } else if (request.method === 'POST') {
     headers['Content-Type'] = 'application/JSON';
-    request.on('data', chunk => body.push(JSON.parse(chunk)));
+    request.on('data', chunk => {
+      let message = JSON.parse(chunk);
+      message.objectId = body.length + 1;
+      message.createdAt = new Date();
+      body.unshift(message);
+    });
     request.on('end', () => {
       response.writeHead(201, headers);
+      response.end();
+    });
+  } else if (request.method === 'PUT') {
+    headers['Content-Type'] = 'application/JSON';
+    request.on('data', chunk => {
+      let message = JSON.parse(chunk);
+      for (let i = 0; i < body.length; i++) {
+        if (body[i].objectId === message.objectId) {
+          body[i] = message;
+          break;
+        }
+      }
+    });
+    request.on('end', () => {
+      response.writeHead(200, headers);
+      response.end();
+    });
+  } else if (request.method === 'DELETE') {
+    headers['Content-Type'] = 'application/JSON';
+    request.on('data', chunk => {
+      let message = JSON.parse(chunk);
+      for (let i = 0; i < body.length; i++) {
+        if (body[i].objectId === message.objectId) {
+          body.splice(i, 1);
+          break;
+        }
+      }
+    });
+    request.on('end', () => {
+      response.writeHead(200, headers);
       response.end();
     });
   } else {
