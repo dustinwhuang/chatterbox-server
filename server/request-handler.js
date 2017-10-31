@@ -12,7 +12,8 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 var url = require('url');
-var qs = require('querystring')
+var fs = require('fs');
+var path = require('path');
 var body = [];
 
 var requestHandler = function(request, response) {
@@ -40,8 +41,6 @@ var requestHandler = function(request, response) {
 
   // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
-
-
 
 
   // Tell the client we are sending them plain text.
@@ -98,8 +97,36 @@ var requestHandler = function(request, response) {
       response.end();
     });
   } else {
-    response.writeHead(notFoundCode, headers); 
-    response.end();
+    let filePath = `${purl.pathname}`;
+
+    if (filePath === '/') {
+      filePath = '/index.html';
+    }
+
+    fs.exists(`./client${filePath}`, function(exists) {
+      if (exists) {
+        fs.readFile(`./client${filePath}`, function(error, content) {
+          if (error) {
+            response.writeHead(500);
+            response.end();
+          } else {
+            var extname = path.extname(filePath);
+            if (extname === '.js') {
+              headers['Content-Type'] = 'text/javascript';
+            } else if (extname === '.css') {
+              headers['Content-Type'] = 'text/css';
+            } else {
+              headers['Content-Type'] = 'text/html';
+            }
+            response.writeHead(200, headers);
+            response.end(content, 'utf-8');
+          }
+        });
+      } else {
+        response.writeHead(notFoundCode, headers); 
+        response.end();
+      }
+    });
   }
 
 
